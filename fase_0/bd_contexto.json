@@ -10,11 +10,14 @@
     "cartera": {
       "descripcion": "Estado de pagos pendientes y saldos por contrato"
     },
-    "codigo_promocion": {
-      "descripcion": ""
+    "movimientos": {
+      "descripcion": "Control de todos los movimientos realizados en la compañia"
     },
-    "tmp_pagos": {
-      "descripcion": ""
+    "gerencial_barrio": {
+      "descripcion": "Tabla principal de gestion de informacion, de conectados, con pagando, casas pasadas y barrios"
+    },
+    "servicios": {
+      "descripcion": "Resumen de los servicios realizados a los clientes, entre soporte tecnico, visitas de instalacion"
     }
   },
   "ejemplos_sql": [
