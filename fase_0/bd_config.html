@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurar BD - Agente ATS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-primary: #0f0f13;
+            --bg-secondary: #1a1a24;
+            --bg-card: #15151f;
+            --accent: #6c5ce7;
+            --accent-hover: #7d6ff0;
+            --text: #e8e8ef;
+            --text-muted: #8888a0;
+            --border: #2a2a3a;
+            --success: #00cec9;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-left .logo {
+            width: 36px; height: 36px;
+            background: var(--accent);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+        }
+
+        .header-left h1 { font-size: 16px; font-weight: 600; }
+        .header-left span { font-size: 12px; color: var(--text-muted); }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+        .btn-primary:hover { background: var(--accent-hover); }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-muted);
+        }
+        .btn-ghost:hover { border-color: var(--accent); color: var(--text); }
+
+        .btn-danger {
+            background: transparent;
+            color: var(--danger);
+            border-color: transparent;
+        }
+        .btn-danger:hover { border-color: var(--danger); }
+
+        .btn-sm {
+            padding: 5px 12px;
+            font-size: 12px;
+        }
+
+        main {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 32px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+        }
+
+        .toast {
+            position: fixed;
+            top: 70px;
+            right: 24px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            z-index: 100;
+            animation: slideIn 0.3s ease;
+            display: none;
+        }
+        .toast.success { background: rgba(0,206,201,0.15); color: var(--success); border: 1px solid rgba(0,206,201,0.3); }
+        .toast.error { background: rgba(231,76,60,0.15); color: var(--danger); border: 1px solid rgba(231,76,60,0.3); }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .section-header {
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .section-header h2 {
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-header .badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: rgba(108,92,231,0.15);
+            color: var(--accent);
+            font-weight: 400;
+        }
+
+        .section-body { padding: 20px; }
+
+        .help-text {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            border-left: 3px solid var(--accent);
+        }
+
+        .help-text code {
+            background: rgba(108,92,231,0.2);
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 12px;
+        }
+
+        input[type="text"], textarea {
+            width: 100%;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input[type="text"]:focus, textarea:focus { border-color: var(--accent); }
+        textarea { resize: vertical; min-height: 60px; line-height: 1.5; }
+
+        .field { margin-bottom: 14px; }
+        .field label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .tabla-item, .ejemplo-item, .regla-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 10px;
+            position: relative;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .item-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .item-header .tabla-nombre {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--success);
+        }
+
+        .ejemplo-item .ejemplo-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .ejemplo-item textarea.sql-input {
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 12px;
+            min-height: 50px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 24px;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .add-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .add-row input { flex: 1; }
+
+        .tabla-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 16px;
+            max-height: 150px;
+            overflow-y: auto;
+            padding: 8px;
+            background: var(--bg-primary);
+            border-radius: 8px;
+        }
+
+        .tabla-chip {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+
+        .tabla-chip:hover { border-color: var(--accent); color: var(--text); }
+        .tabla-chip.active {
+            background: rgba(0,206,201,0.15);
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .stats {
+            display: flex;
+            gap: 16px;
+            padding: 12px 0;
+        }
+
+        .stat {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .stat strong {
+            color: var(--text);
+            font-size: 18px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-left">
+            <div class="logo">&#x2699;</div>
+            <div>
+                <h1>Configurar Base de Datos</h1>
+                <span>Contexto de negocio para el agente IA</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="/" class="btn btn-ghost">&larr; Volver al Chat</a>
+            <button class="btn btn-primary" onclick="guardar()">Guardar cambios</button>
+        </div>
+    </header>
+
+    <div class="toast" id="toast"></div>
+
+    <main>
+        <!-- Descripción general -->
+        <div class="section">
+            <div class="section-header">
+                <h2>Descripcion general de la BD</h2>
+            </div>
+            <div class="section-body">
+                <div class="help-text">
+                    Describe en una frase de que trata tu base de datos. Esto le da contexto general al agente.<br>
+                    <strong>Ejemplo:</strong> "Base de datos de gestion comercial con informacion de clientes, contratos de venta a credito y cartera de cobros."
+                </div>
+                <textarea id="descripcionBD" rows="2" placeholder="Ej: Base de datos de ventas y cartera de la empresa XYZ..."></textarea>
+            </div>
+        </div>
+
+        <!-- Tablas con descripción -->
+        <div class="section">
+            <div class="section-header">
+                <h2>Tablas con descripcion <span class="badge" id="tablasCount">0</span></h2>
+            </div>
+            <div class="section-body">
+                <div class="help-text">
+                    Selecciona las tablas mas importantes y agrega una descripcion en lenguaje natural.
+                    No necesitas describir todas, solo las que mas uses.<br>
+                    <strong>El agente usa estas descripciones para elegir las tablas correctas cuando le haces una pregunta.</strong><br><br>
+                    <strong>Ejemplo:</strong> Para la tabla <code>cartera</code>, escribe: "Saldos pendientes por cobrar de cada contrato. Incluye cuotas, mora, fecha de pago."
+                </div>
+
+                <div class="tabla-selector" id="tablaSelector">
+                    <span style="color:var(--text-muted); font-size:12px; width:100%; margin-bottom:4px;">
+                        Haz clic en una tabla para agregarla:
+                    </span>
+                </div>
+
+                <div id="tablasDescritas"></div>
+
+                <div class="empty-state" id="tablasEmpty">
+                    Haz clic en las tablas de arriba para empezar a describirlas.
+                </div>
+            </div>
+        </div>
+
+        <!-- Ejemplos SQL -->
+        <div class="section">
+            <div class="section-header">
+                <h2>Ejemplos de consultas SQL <span class="badge" id="ejemplosCount">0</span></h2>
+            </div>
+            <div class="section-body">
+                <div class="help-text">
+                    Agrega ejemplos de preguntas y las consultas SQL que las responden correctamente.
+                    Esto le ensena al agente <strong>como se relacionan tus tablas</strong> y que convenciones usa tu BD.<br><br>
+                    <strong>Tip:</strong> Incluye consultas con JOINs entre tablas, funciones de agregacion, y filtros comunes.
+                    Mientras mas ejemplos, mejor sera el agente generando SQL.<br><br>
+                    <strong>Ejemplo:</strong><br>
+                    Pregunta: "Top 10 clientes con mas deuda"<br>
+                    SQL: <code>SELECT c.nombre, SUM(ca.saldo) as deuda FROM clientes c JOIN cartera ca ON c.id = ca.id_cliente GROUP BY c.nombre ORDER BY deuda DESC LIMIT 10</code>
+                </div>
+
+                <div id="ejemplosLista"></div>
+
+                <div class="empty-state" id="ejemplosEmpty">
+                    Aun no hay ejemplos. Agrega tu primera consulta de ejemplo.
+                </div>
+
+                <button class="btn btn-ghost btn-sm" onclick="agregarEjemplo()" style="margin-top:12px;">
+                    + Agregar ejemplo SQL
+                </button>
+            </div>
+        </div>
+
+        <!-- Reglas de negocio -->
+        <div class="section">
+            <div class="section-header">
+                <h2>Reglas de negocio <span class="badge" id="reglasCount">0</span></h2>
+            </div>
+            <div class="section-body">
+                <div class="help-text">
+                    Anota convenciones o reglas especiales de tu BD que el agente necesita saber.<br><br>
+                    <strong>Ejemplos utiles:</strong><br>
+                    &bull; <code>estado = 'A'</code> significa activo, <code>'I'</code> inactivo<br>
+                    &bull; Las fechas en la tabla <code>contrato</code> estan en formato <code>YYYY-MM-DD</code> como VARCHAR<br>
+                    &bull; <code>tipo_cliente = 1</code> es persona natural, <code>2</code> es empresa<br>
+                    &bull; La tabla <code>cartera</code> tiene una fila por cuota, no por contrato<br>
+                    &bull; Montos en <code>valor_cuota</code> incluyen IVA
+                </div>
+
+                <div id="reglasLista"></div>
+
+                <div class="add-row">
+                    <input type="text" id="nuevaRegla" placeholder="Escribe una regla de negocio..."
+                           onkeydown="if(event.key==='Enter') agregarRegla()">
+                    <button class="btn btn-ghost btn-sm" onclick="agregarRegla()">+ Agregar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview -->
+        <div class="section">
+            <div class="section-header">
+                <h2>Vista previa del contexto</h2>
+                <button class="btn btn-ghost btn-sm" onclick="actualizarPreview()">Actualizar</button>
+            </div>
+            <div class="section-body">
+                <div class="help-text">
+                    Asi vera el agente IA tu contexto de negocio. Se inyecta en el prompt antes de cada consulta.
+                </div>
+                <pre id="preview" style="background:var(--bg-primary); padding:16px; border-radius:8px;
+                     font-size:12px; color:var(--text-muted); white-space:pre-wrap; max-height:300px;
+                     overflow-y:auto; font-family:'Cascadia Code','Fira Code',monospace;"></pre>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let todasLasTablas = [];
+        let datos = {
+            descripcion_bd: '',
+            tablas: {},
+            ejemplos_sql: [],
+            reglas_negocio: []
+        };
+
+        async function init() {
+            const [ctxRes, bdRes] = await Promise.all([
+                fetch('/bd/contexto').then(r => r.json()),
+                fetch('/bd/esquema').then(r => r.json()).catch(() => ({ tablas: [] }))
+            ]);
+
+            datos = ctxRes;
+            todasLasTablas = bdRes.tablas || [];
+
+            document.getElementById('descripcionBD').value = datos.descripcion_bd || '';
+
+            renderTablaSelector();
+            renderTablasDescritas();
+            renderEjemplos();
+            renderReglas();
+            actualizarPreview();
+        }
+
+        function renderTablaSelector() {
+            const container = document.getElementById('tablaSelector');
+            const label = container.querySelector('span');
+            container.innerHTML = '';
+            container.appendChild(label);
+
+            for (const t of todasLasTablas) {
+                const chip = document.createElement('span');
+                chip.className = 'tabla-chip' + (datos.tablas[t] ? ' active' : '');
+                chip.textContent = t;
+                chip.onclick = () => toggleTabla(t);
+                container.appendChild(chip);
+            }
+        }
+
+        function toggleTabla(nombre) {
+            if (datos.tablas[nombre]) {
+                delete datos.tablas[nombre];
+            } else {
+                datos.tablas[nombre] = { descripcion: '' };
+            }
+            renderTablaSelector();
+            renderTablasDescritas();
+        }
+
+        function renderTablasDescritas() {
+            const container = document.getElementById('tablasDescritas');
+            const empty = document.getElementById('tablasEmpty');
+            const keys = Object.keys(datos.tablas);
+            document.getElementById('tablasCount').textContent = keys.length;
+
+            if (keys.length === 0) {
+                container.innerHTML = '';
+                empty.style.display = '';
+                return;
+            }
+            empty.style.display = 'none';
+
+            container.innerHTML = keys.map(nombre => `
+                <div class="tabla-item">
+                    <div class="item-header">
+                        <span class="tabla-nombre">${nombre}</span>
+                        <button class="btn btn-danger btn-sm" onclick="toggleTabla('${nombre}')">Quitar</button>
+                    </div>
+                    <div class="field">
+                        <label>Descripcion (que datos contiene, para que sirve)</label>
+                        <input type="text" value="${esc(datos.tablas[nombre].descripcion || '')}"
+                               onchange="datos.tablas['${nombre}'].descripcion = this.value"
+                               placeholder="Ej: Datos personales de los clientes con nombre, cedula, telefono...">
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderEjemplos() {
+            const container = document.getElementById('ejemplosLista');
+            const empty = document.getElementById('ejemplosEmpty');
+            document.getElementById('ejemplosCount').textContent = datos.ejemplos_sql.length;
+
+            if (datos.ejemplos_sql.length === 0) {
+                container.innerHTML = '';
+                empty.style.display = '';
+                return;
+            }
+            empty.style.display = 'none';
+
+            container.innerHTML = datos.ejemplos_sql.map((ej, i) => `
+                <div class="ejemplo-item">
+                    <div class="item-header">
+                        <span style="font-size:12px; color:var(--text-muted)">Ejemplo ${i + 1}</span>
+                        <button class="btn btn-danger btn-sm" onclick="borrarEjemplo(${i})">Quitar</button>
+                    </div>
+                    <div class="ejemplo-grid">
+                        <div class="field">
+                            <label>Pregunta en lenguaje natural</label>
+                            <input type="text" value="${esc(ej.pregunta)}"
+                                   onchange="datos.ejemplos_sql[${i}].pregunta = this.value"
+                                   placeholder="Ej: Cuantos contratos activos hay?">
+                        </div>
+                        <div class="field" style="margin-bottom:0">
+                            <label>Consulta SQL que responde esa pregunta</label>
+                            <textarea class="sql-input" rows="2"
+                                      onchange="datos.ejemplos_sql[${i}].sql = this.value"
+                                      placeholder="SELECT COUNT(*) FROM contrato WHERE estado = 'A'">${esc(ej.sql)}</textarea>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function agregarEjemplo() {
+            datos.ejemplos_sql.push({ pregunta: '', sql: '' });
+            renderEjemplos();
+            const items = document.querySelectorAll('.ejemplo-item');
+            items[items.length - 1]?.querySelector('input')?.focus();
+        }
+
+        function borrarEjemplo(i) {
+            datos.ejemplos_sql.splice(i, 1);
+            renderEjemplos();
+        }
+
+        function renderReglas() {
+            const container = document.getElementById('reglasLista');
+            document.getElementById('reglasCount').textContent = datos.reglas_negocio.length;
+
+            container.innerHTML = datos.reglas_negocio.map((regla, i) => `
+                <div class="regla-item" style="display:flex; align-items:center; gap:10px; padding:10px 14px;">
+                    <span style="flex:1; font-size:13px;">${esc(regla)}</span>
+                    <button class="btn btn-danger btn-sm" onclick="borrarRegla(${i})">x</button>
+                </div>
+            `).join('');
+        }
+
+        function agregarRegla() {
+            const input = document.getElementById('nuevaRegla');
+            const texto = input.value.trim();
+            if (!texto) return;
+            datos.reglas_negocio.push(texto);
+            input.value = '';
+            renderReglas();
+        }
+
+        function borrarRegla(i) {
+            datos.reglas_negocio.splice(i, 1);
+            renderReglas();
+        }
+
+        function actualizarPreview() {
+            datos.descripcion_bd = document.getElementById('descripcionBD').value;
+
+            let lines = [];
+            if (datos.descripcion_bd) lines.push('BD: ' + datos.descripcion_bd);
+
+            const tablaKeys = Object.keys(datos.tablas);
+            if (tablaKeys.length > 0) {
+                lines.push('\nTABLAS DESCRITAS:');
+                tablaKeys.forEach(t => {
+                    const desc = datos.tablas[t].descripcion;
+                    lines.push('  ' + t + (desc ? ': ' + desc : ''));
+                });
+            }
+
+            if (datos.reglas_negocio.length > 0) {
+                lines.push('\nREGLAS: ' + datos.reglas_negocio.join(' | '));
+            }
+
+            if (datos.ejemplos_sql.length > 0) {
+                lines.push('\nEJEMPLOS:');
+                datos.ejemplos_sql.forEach(ej => {
+                    if (ej.pregunta || ej.sql) {
+                        lines.push('  P: ' + ej.pregunta);
+                        lines.push('  SQL: ' + ej.sql);
+                    }
+                });
+            }
+
+            document.getElementById('preview').textContent = lines.join('\n') || '(vacío - agrega información arriba)';
+        }
+
+        async function guardar() {
+            datos.descripcion_bd = document.getElementById('descripcionBD').value;
+
+            // Limpiar ejemplos vacíos
+            datos.ejemplos_sql = datos.ejemplos_sql.filter(e => e.pregunta || e.sql);
+
+            try {
+                const res = await fetch('/bd/contexto', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(datos)
+                });
+                const result = await res.json();
+                mostrarToast('Contexto guardado y recargado en el agente', 'success');
+                actualizarPreview();
+            } catch (err) {
+                mostrarToast('Error al guardar: ' + err.message, 'error');
+            }
+        }
+
+        function mostrarToast(msg, tipo) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast ' + tipo;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 3000);
+        }
+
+        function esc(text) {
+            const d = document.createElement('div');
+            d.textContent = text || '';
+            return d.innerHTML;
+        }
+
+        init();
+    </script>
+</body>
+</html>

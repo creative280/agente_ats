@@ -1,0 +1,29 @@
+{
+  "descripcion_bd": "Base de datos de gestión comercial y cartera de la empresa.",
+  "tablas": {
+    "clientes": {
+      "descripcion": "Datos personales de los clientes (nombre, cédula, dirección, teléfono)"
+    },
+    "contrato": {
+      "descripcion": "Contratos de venta firmados con montos, plazos y estados"
+    },
+    "cartera": {
+      "descripcion": "Estado de pagos pendientes y saldos por contrato"
+    },
+    "codigo_promocion": {
+      "descripcion": ""
+    },
+    "tmp_pagos": {
+      "descripcion": ""
+    }
+  },
+  "ejemplos_sql": [
+    {
+      "pregunta": "¿Cuántos clientes hay en total?",
+      "sql": "SELECT COUNT(*) AS total_clientes FROM clientes"
+    }
+  ],
+  "reglas_negocio": [
+    "Ejemplo: estado = 'A' significa activo, 'I' significa inactivo"
+  ]
+}

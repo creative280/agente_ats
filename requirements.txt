@@ -1,0 +1,34 @@
+# === FASE 0: Fundamentos (Groq gratis) ===
+groq
+python-dotenv
+httpx
+pydantic
+sqlalchemy
+
+# === Drivers de BD (descomenta el que necesites) ===
+# pymssql                    # SQL Server (opción simple, sin ODBC)
+# pyodbc                     # SQL Server (con ODBC Driver)
+# pymysql                    # MySQL
+# psycopg2-binary            # PostgreSQL
+
+# === FASE 1: API + Chatbot ===
+fastapi
+uvicorn[standard]
+
+# === FASE 2: Mensajería ===
+# python-telegram-bot
+
+# === FASE 3: Agentes (instalar cuando llegues a Fase 3) ===
+# langchain
+# langchain-google-genai
+# langchain-community
+# langgraph
+# faiss-cpu
+# pypdf
+
+# === FASE 4: Infraestructura (instalar cuando llegues a Fase 4) ===
+# asyncpg
+# redis
+
+# === FASE 5: Automatización (instalar cuando llegues a Fase 5) ===
+# celery
