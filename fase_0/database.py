@@ -10,7 +10,7 @@ import re
 from pathlib import Path
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text, inspect
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Engine, make_url
 
 _env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(_env_path, override=True)
@@ -29,6 +29,111 @@ def crear_engine() -> Engine:
             "  SQLite:     sqlite:///ruta/archivo.db"
         )
     return create_engine(url, pool_pre_ping=True, pool_size=5)
+
+
+def cambiar_nombre_bd_en_url(database_url: str, nombre_bd: str) -> str:
+    """
+    Retorna un DATABASE_URL nuevo cambiando solo el nombre de la base de datos.
+    Mantiene usuario, password, host, puerto y query params.
+    """
+    if not database_url:
+        raise ValueError("DATABASE_URL vacía.")
+    if not nombre_bd or not nombre_bd.strip():
+        raise ValueError("El nombre de la base de datos no puede estar vacío.")
+
+    nombre_bd = nombre_bd.strip()
+    if not re.fullmatch(r"[a-zA-Z0-9_\-\.]+", nombre_bd):
+        raise ValueError("Nombre de base de datos inválido. Usa letras, números, guion, guion bajo o punto.")
+
+    try:
+        url = make_url(database_url)
+        nueva_url = url.set(database=nombre_bd)
+        return nueva_url.render_as_string(hide_password=False)
+    except Exception as e:
+        raise ValueError(f"No se pudo construir la nueva URL de conexión: {e}") from e
+
+
+def listar_bases_disponibles(database_url: str) -> list[str]:
+    """
+    Lista las bases disponibles para el usuario actual en la instancia.
+    Intenta conectarse con el mismo usuario/host pero en una BD de sistema
+    según el motor para consultar el catálogo.
+    """
+    if not database_url:
+        raise ValueError("DATABASE_URL vacía.")
+
+    url = make_url(database_url)
+    driver = (url.drivername or "").lower()
+    backend = driver.split("+", 1)[0]
+
+    if backend == "sqlite":
+        return [url.database] if url.database else []
+
+    # En MySQL administrado, abrir sesión sin DB puede fallar aunque la DB actual sí sea accesible.
+    # Por eso se intenta primero con la URL original y luego con DBs de catálogo.
+    candidatos_url = [url]
+    if backend in {"postgresql", "postgres"}:
+        candidatos_url.append(url.set(database="postgres"))
+    elif backend in {"mssql"}:
+        candidatos_url.append(url.set(database="master"))
+
+    if backend in {"mysql", "mariadb"}:
+        consultas = [
+            "SELECT DISTINCT table_schema FROM information_schema.tables ORDER BY table_schema",
+            "SHOW DATABASES",
+            "SELECT schema_name FROM information_schema.schemata ORDER BY schema_name",
+            "SELECT DATABASE()",
+        ]
+    elif backend in {"postgresql", "postgres"}:
+        consultas = [
+            "SELECT datname FROM pg_database WHERE datistemplate = false ORDER BY datname",
+            "SELECT current_database()",
+        ]
+    elif backend == "mssql":
+        consultas = [
+            "SELECT name FROM sys.databases ORDER BY name",
+            "SELECT DB_NAME()",
+        ]
+    else:
+        consultas = [
+            "SELECT schema_name FROM information_schema.schemata ORDER BY schema_name",
+        ]
+
+    bases: set[str] = set()
+    ultimo_error = None
+    for url_candidato in candidatos_url:
+        engine_catalogo = create_engine(
+            url_candidato.render_as_string(hide_password=False),
+            pool_pre_ping=True,
+            pool_size=2,
+        )
+        try:
+            with engine_catalogo.connect() as conn:
+                for q in consultas:
+                    try:
+                        filas = conn.execute(text(q)).fetchall()
+                        for row in filas:
+                            valor = row[0] if row else None
+                            if valor:
+                                bases.add(str(valor))
+                        if bases:
+                            break
+                    except Exception as e:
+                        ultimo_error = e
+                if bases:
+                    break
+        except Exception as e:
+            ultimo_error = e
+        finally:
+            engine_catalogo.dispose()
+
+    if url.database:
+        bases.add(url.database)
+
+    if not bases and ultimo_error is not None:
+        raise ultimo_error
+
+    return sorted(b for b in bases if b)
 
 
 def listar_tablas(engine: Engine, esquemas: list[str] | None = None) -> list[str]:

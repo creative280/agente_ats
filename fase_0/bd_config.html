@@ -178,7 +178,7 @@
             font-size: 12px;
         }
 
-        input[type="text"], textarea {
+        input[type="text"], textarea, select {
             width: 100%;
             background: var(--bg-primary);
             border: 1px solid var(--border);
@@ -190,7 +190,7 @@
             outline: none;
             transition: border-color 0.2s;
         }
-        input[type="text"]:focus, textarea:focus { border-color: var(--accent); }
+        input[type="text"]:focus, textarea:focus, select:focus { border-color: var(--accent); }
         textarea { resize: vertical; min-height: 60px; line-height: 1.5; }
 
         .field { margin-bottom: 14px; }
@@ -256,7 +256,7 @@
             margin-top: 12px;
         }
 
-        .add-row input { flex: 1; }
+        .add-row input, .add-row select { flex: 1; }
 
         .tabla-selector {
             display: flex;
@@ -323,6 +323,28 @@
     <div class="toast" id="toast"></div>
 
     <main>
+        <!-- Cambio de base de datos -->
+        <div class="section">
+            <div class="section-header">
+                <h2>Conexion de base de datos</h2>
+            </div>
+            <div class="section-body">
+                <div class="help-text">
+                    Cambia solo el nombre de la base de datos, manteniendo el mismo servidor y usuario de <code>DATABASE_URL</code>.<br>
+                    <strong>Ejemplo:</strong> cambiar de <code>cifras_channel</code> a <code>channel</code>.
+                </div>
+                <div class="field">
+                    <label>Base de datos actual</label>
+                    <input type="text" id="bdActual" readonly>
+                </div>
+                <div class="add-row">
+                    <select id="selectorBases"></select>
+                    <button class="btn btn-ghost btn-sm" onclick="cargarBasesDisponibles()">Actualizar lista</button>
+                    <button class="btn btn-primary btn-sm" onclick="cambiarBaseDatos()">Cambiar BD</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Descripción general -->
         <div class="section">
             <div class="section-header">
@@ -437,6 +459,7 @@
 
     <script>
         let todasLasTablas = [];
+        let basesDisponibles = [];
         let datos = {
             descripcion_bd: '',
             tablas: {},
@@ -460,6 +483,93 @@
             renderEjemplos();
             renderReglas();
             actualizarPreview();
+            await cargarBasesDisponibles();
+            await cargarBaseActual();
+        }
+
+        async function cargarBaseActual() {
+            try {
+                const res = await fetch('/bd/base');
+                const data = await res.json();
+                document.getElementById('bdActual').value = data.nombre_bd || '(sin configurar)';
+            } catch (_) {
+                document.getElementById('bdActual').value = '(no disponible)';
+            }
+        }
+
+        function renderSelectorBases(baseActual = '') {
+            const selector = document.getElementById('selectorBases');
+            if (!selector) return;
+
+            if (!basesDisponibles.length) {
+                selector.innerHTML = '<option value="">(sin bases disponibles)</option>';
+                selector.disabled = true;
+                return;
+            }
+
+            selector.disabled = false;
+            selector.innerHTML = basesDisponibles
+                .map(b => `<option value="${esc(b)}">${esc(b)}</option>`)
+                .join('');
+
+            const seleccion = baseActual && basesDisponibles.includes(baseActual)
+                ? baseActual
+                : basesDisponibles[0];
+            selector.value = seleccion;
+        }
+
+        async function cargarBasesDisponibles() {
+            try {
+                const res = await fetch('/bd/bases');
+                const data = await res.json();
+                if (!res.ok || data.status === 'error') {
+                    throw new Error(data.mensaje || 'No se pudo obtener la lista de bases');
+                }
+                basesDisponibles = data.bases || [];
+                renderSelectorBases(data.base_actual || '');
+            } catch (err) {
+                basesDisponibles = [];
+                renderSelectorBases('');
+                mostrarToast('No se pudieron cargar las bases: ' + err.message, 'error');
+            }
+        }
+
+        async function recargarEsquema() {
+            try {
+                const bdRes = await fetch('/bd/esquema').then(r => r.json()).catch(() => ({ tablas: [] }));
+                todasLasTablas = bdRes.tablas || [];
+                renderTablaSelector();
+                renderTablasDescritas();
+            } catch (_) {
+                // No bloquea la UI si no pudo actualizar las tablas.
+            }
+        }
+
+        async function cambiarBaseDatos() {
+            const selector = document.getElementById('selectorBases');
+            const nombre_bd = (selector.value || '').trim();
+            if (!nombre_bd) {
+                mostrarToast('Debes seleccionar una base de datos', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch('/bd/base', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nombre_bd })
+                });
+                const result = await res.json();
+                if (!res.ok || result.status === 'error') {
+                    throw new Error(result.mensaje || 'No se pudo cambiar la BD');
+                }
+                await cargarBasesDisponibles();
+                await cargarBaseActual();
+                await recargarEsquema();
+                mostrarToast(result.mensaje || 'Base de datos actualizada', 'success');
+            } catch (err) {
+                mostrarToast('Error al cambiar BD: ' + err.message, 'error');
+            }
         }
 
         function renderTablaSelector() {

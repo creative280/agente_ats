@@ -13,6 +13,7 @@ load_dotenv(_env_path, override=True)
 app = FastAPI(title="Chat IA - Fase 0")
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 MODELO = "llama-3.3-70b-versatile"
+ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
 
 # --- Agente BD (se activa solo si DATABASE_URL está configurada) ---
 agente_bd = None
@@ -54,6 +55,41 @@ class MensajeRequest(BaseModel):
     mensaje: str
     session_id: str = "default"
     personalidad: str = "asistente"
+
+
+class CambiarBDRequest(BaseModel):
+    nombre_bd: str
+
+
+def _persistir_database_url(nueva_url: str) -> bool:
+    """
+    Guarda DATABASE_URL en .env.
+    Retorna True si se pudo persistir, False si no.
+    """
+    try:
+        if ENV_PATH.exists():
+            lineas = ENV_PATH.read_text(encoding="utf-8").splitlines()
+        else:
+            lineas = []
+
+        actualizado = False
+        nuevas_lineas = []
+        for linea in lineas:
+            if linea.strip().startswith("DATABASE_URL="):
+                nuevas_lineas.append(f"DATABASE_URL={nueva_url}")
+                actualizado = True
+            else:
+                nuevas_lineas.append(linea)
+
+        if not actualizado:
+            if nuevas_lineas and nuevas_lineas[-1].strip() != "":
+                nuevas_lineas.append("")
+            nuevas_lineas.append(f"DATABASE_URL={nueva_url}")
+
+        ENV_PATH.write_text("\n".join(nuevas_lineas) + "\n", encoding="utf-8")
+        return True
+    except Exception:
+        return False
 
 
 def obtener_historial(session_id: str, personalidad: str) -> list[dict]:
@@ -148,6 +184,111 @@ async def bd_esquema():
     if not agente_bd:
         return {"error": "BD no conectada"}
     return {"tablas": agente_bd.tablas, "total": len(agente_bd.tablas), "tipo": agente_bd.tipo_bd}
+
+
+@app.get("/bd/base")
+async def bd_base_actual():
+    """Retorna el nombre de la base de datos configurada actualmente."""
+    from sqlalchemy.engine import make_url
+
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        return {"conectado": False, "mensaje": "DATABASE_URL no configurada"}
+
+    try:
+        url = make_url(database_url)
+        return {
+            "conectado": bool(agente_bd),
+            "nombre_bd": url.database,
+            "driver": url.drivername,
+            "host": url.host,
+            "puerto": url.port,
+        }
+    except Exception as e:
+        return {"conectado": False, "error": f"DATABASE_URL inválida: {e}"}
+
+
+@app.get("/bd/bases")
+async def bd_bases_disponibles():
+    """Lista las bases de datos disponibles para el usuario actual."""
+    from sqlalchemy.engine import make_url
+    from database import listar_bases_disponibles
+
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "mensaje": "DATABASE_URL no configurada en .env", "bases": []},
+        )
+
+    try:
+        actual = make_url(database_url).database
+        bases = listar_bases_disponibles(database_url)
+        return {
+            "status": "ok",
+            "base_actual": actual,
+            "bases": bases,
+            "total": len(bases),
+        }
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "mensaje": f"No se pudieron listar las bases disponibles: {e}", "bases": []},
+        )
+
+
+@app.post("/bd/base")
+async def bd_cambiar_base(req: CambiarBDRequest):
+    """
+    Cambia el nombre de la BD en DATABASE_URL y reconecta el agente.
+    Solo modifica el nombre de base; mantiene servidor, usuario y credenciales.
+    """
+    global agente_bd, bd_disponible
+
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "mensaje": "DATABASE_URL no configurada en .env"},
+        )
+
+    try:
+        from database import cambiar_nombre_bd_en_url, listar_bases_disponibles
+        bases_disponibles = listar_bases_disponibles(database_url)
+        if bases_disponibles and req.nombre_bd not in bases_disponibles:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "status": "error",
+                    "mensaje": f"La base '{req.nombre_bd}' no está disponible para este usuario.",
+                    "bases_disponibles": bases_disponibles,
+                },
+            )
+
+        nueva_url = cambiar_nombre_bd_en_url(database_url, req.nombre_bd)
+        os.environ["DATABASE_URL"] = nueva_url
+
+        from agente_sql import AgenteBD
+        agente_bd = AgenteBD()
+        bd_disponible = True
+        persistido = _persistir_database_url(nueva_url)
+
+        return {
+            "status": "ok",
+            "mensaje": (
+                f"Base de datos cambiada a '{req.nombre_bd}' y agente reconectado."
+                if persistido
+                else f"Base de datos cambiada a '{req.nombre_bd}' y agente reconectado (no se pudo guardar en .env)."
+            ),
+            "nombre_bd": req.nombre_bd,
+            "persistido_en_env": persistido,
+        }
+    except Exception as e:
+        bd_disponible = bool(agente_bd)
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "mensaje": f"No se pudo cambiar la base de datos: {e}"},
+        )
 
 
 _CONTEXTO_PATH = Path(__file__).resolve().parent / "bd_contexto.json"

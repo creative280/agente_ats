@@ -112,6 +112,19 @@ cd fase_0
 uvicorn app:app --reload --port 8000
 ```
 
+En Windows, también puedes iniciar con limpieza automática del puerto (cierra procesos previos que estén usando el puerto antes de arrancar):
+
+```powershell
+cd fase_0
+.\start_server.ps1 -Port 8000
+```
+
+Si quieres auto-recarga durante desarrollo:
+
+```powershell
+.\start_server.ps1 -Port 8000 -Reload
+```
+
 ### Endpoints disponibles
 
 | Método | Ruta | Descripción |
@@ -123,6 +136,9 @@ uvicorn app:app --reload --port 8000
 | `GET` | `/personalidades` | Listar personalidades disponibles |
 | `GET` | `/bd/status` | Estado de conexión a la BD |
 | `GET` | `/bd/esquema` | Esquema completo de la BD |
+| `GET` | `/bd/base` | Ver nombre de BD actual (de `DATABASE_URL`) |
+| `GET` | `/bd/bases` | Listar bases disponibles para el usuario actual |
+| `POST` | `/bd/base` | Cambiar solo nombre de BD y reconectar agente |
 | `GET` | `/bd/config` | Panel de configuración de BD |
 | `GET` | `/bd/contexto` | Obtener contexto de negocio |
 | `POST` | `/bd/contexto` | Guardar contexto de negocio |
